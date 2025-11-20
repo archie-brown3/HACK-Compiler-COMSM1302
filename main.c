@@ -21,6 +21,9 @@ void parse_c_instruction(Token *instruction[], int length, char *dest_str);
 void parse_c_comp(Token *instruction[], int length, char *comp_str);
 void parse_c_jump(Token *instruction[], int length, char *jump_str);
 void parse_c_dest(Token *instruction[], int length, char *dest_str);
+void int_to_bin_string(int num, char *dest);
+
+
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -38,8 +41,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     FILE *lex_output = fopen("temp.lex", "w");
-    if (lex_output == NULL) {        rom_address ++;
-
+    if (lex_output == NULL) {        
         exit(EXIT_FAILURE);
     }
     lex_file(labels, input, lex_output);
@@ -97,7 +99,7 @@ void lex_line(int *rom_address, SymbolTable *labels, const char *line, FILE *out
             }
         }
         // Add labels to the symbol table.
-        if (line[pos] == '(') {
+        if (line[pos] == '(' ) {
             lex_label(line+pos, *rom_address, labels);
             break;
         }
@@ -109,15 +111,11 @@ void lex_line(int *rom_address, SymbolTable *labels, const char *line, FILE *out
         free_token(next);
     }
 
-    if (tokens_on_line) {
-        // INSERT CODE: If the line you just lexed contained tokens (i.e. if it corresponds to a line of machine code),
-        // lex the newline at the end and update rom_address.
-        
+    if (tokens_on_line) {// lex the newline at the end and update rom_address.       
         // Allocate memory on the heap for a newline token
         Token *newline = malloc_token();
         // Mark the end of the instuction with a NEWLINE token
         newline->type = NEWLINE;
-
         // Write the newline token to the output file and cleanup memory
         write_token(newline, output);
         free_token(newline);
@@ -133,9 +131,7 @@ void lex_label(const char *line, int rom_address, SymbolTable *labels) {
     // If the line does not start with '(', return immediately
     if (line[0] != '(') {
         return;
-    }
-   // Handle comments
-   
+    }   
    int index = 1;
    while (line[index] != ')' && line[index] != '\0') {
     index++;
@@ -192,7 +188,41 @@ int lex_token(Token *dest, const char *line) {
    keyword[length] = line[length];
   }
   keyword[length] = '\0';
-  // TODO: Parse keyword string and set dest->value.key_val
+  // Parse keyword string and set dest->value.key_val
+  if (strcmp(keyword, "A") == 0) dest->value.key_val = KW_A;
+  else if (strcmp(keyword, "D") == 0) dest->value.key_val = KW_D;
+  else if (strcmp(keyword, "M") == 0) dest->value.key_val = KW_M;
+  else if (strcmp(keyword, "R0") == 0) dest->value.key_val = R0;
+  else if (strcmp(keyword, "R1") == 0) dest->value.key_val = R1;
+  else if (strcmp(keyword, "R2") == 0) dest->value.key_val = R2;
+  else if (strcmp(keyword, "R3") == 0) dest->value.key_val = R3;
+  else if (strcmp(keyword, "R4") == 0) dest->value.key_val = R4;
+  else if (strcmp(keyword, "R5") == 0) dest->value.key_val = R5;
+  else if (strcmp(keyword, "R6") == 0) dest->value.key_val = R6;
+  else if (strcmp(keyword, "R7") == 0) dest->value.key_val = R7;
+  else if (strcmp(keyword, "R8") == 0) dest->value.key_val = R8;
+  else if (strcmp(keyword, "R9") == 0) dest->value.key_val = R9;
+  else if (strcmp(keyword, "R10") == 0) dest->value.key_val = R10;
+  else if (strcmp(keyword, "R11") == 0) dest->value.key_val = R11;
+  else if (strcmp(keyword, "R12") == 0) dest->value.key_val = R12;
+  else if (strcmp(keyword, "R13") == 0) dest->value.key_val = R13;
+  else if (strcmp(keyword, "R14") == 0) dest->value.key_val = R14;
+  else if (strcmp(keyword, "R15") == 0) dest->value.key_val = R15;
+  else if (strcmp(keyword, "SP") == 0) dest->value.key_val = SP;
+  else if (strcmp(keyword, "LCL") == 0) dest->value.key_val = LCL;
+  else if (strcmp(keyword, "ARG") == 0) dest->value.key_val = ARG;
+  else if (strcmp(keyword, "THIS") == 0) dest->value.key_val = THIS;
+  else if (strcmp(keyword, "THAT") == 0) dest->value.key_val = THAT;
+  else if (strcmp(keyword, "SCREEN") == 0) dest->value.key_val = SCREEN;
+  else if (strcmp(keyword, "KBD") == 0) dest->value.key_val = KBD;
+  else if (strncmp(keyword, "JGT", 3) == 0) dest->value.key_val = JGT;
+  else if (strncmp(keyword, "JEQ", 3) == 0) dest->value.key_val = JEQ;
+  else if (strncmp(keyword, "JGE", 3) == 0) dest->value.key_val = JGE;
+  else if (strncmp(keyword, "JLT", 3) == 0) dest->value.key_val = JLT;
+  else if (strncmp(keyword, "JNE", 3) == 0) dest->value.key_val = JNE;
+  else if (strncmp(keyword, "JLE", 3) == 0) dest->value.key_val = JLE;
+  else if (strncmp(keyword, "JMP", 3) == 0) dest->value.key_val = JMP;
+  else exit(EXIT_FAILURE);
  }
  // Identifiers
  else {
@@ -207,6 +237,8 @@ int lex_token(Token *dest, const char *line) {
   }
   identifier[length] = '\0';
   // TODO: Copy identifier to dest->value
+  dest->value.str_val = malloc(strlen(identifier) +1);
+  strcpy(dest->value.str_val, identifier);
  }
  at_previous = (line[0] == '@');
  return length;
@@ -254,7 +286,8 @@ int get_next_instruction(Token *dest[], FILE *input) {
 void parse_instruction(const SymbolTable *labels, SymbolTable *variables, Token *instruction[], int length,
                        FILE *output) {
     char hack_instruction[18] = "";
-    if (1){ // INSERT CODE: Fill in the right condition here
+    // If is A instruction: 
+    if (instruction[0]->type == SYMBOL && instruction[0]->value.char_val == '@'){ 
         parse_a_instruction(labels, variables, instruction, hack_instruction);
     } else {
         parse_c_instruction(instruction, length, hack_instruction);
@@ -266,20 +299,57 @@ void parse_instruction(const SymbolTable *labels, SymbolTable *variables, Token 
 // Parse the operand of the given A instruction, updating the variables table accordingly, and put the corresponding
 // Hack command into dest.
 void parse_a_instruction(const SymbolTable *labels, SymbolTable *variables, Token *instruction[], char *dest) {
-    Token *operand = instruction[1];
-    int value_to_load;
-    if (operand->type == INTEGER_LITERAL) {
-        value_to_load = operand->value.int_val;
-    } else if (operand->type == IDENTIFIER) {
-        // INSERT CODE: If the token is a label, set value_to_load to the correct ROM address. Otherwise, it's a
-        // variable; set value_to_load to the correct RAM address, first adding the variable to the symbol table if
-        // needed.
-    } else {
-        // INSERT CODE: If the token is a keyword, set value_to_load to the correct integer literal.
+ // INSERT CODE: If the token is a label, set value_to_load to the correct ROM address. Otherwise, it's a
+ // variable; set value_to_load to the correct RAM address, first adding the variable to the symbol table if
+ // needed.
+
+ // Create a pointer to a single token struct?
+ Token *operand = instruction[1];
+    // Token[0] == '@', 
+ int value_to_load;
+ int rom_address;
+ int new_address;
+
+     if (operand->type == INTEGER_LITERAL) {
+         value_to_load = operand->value.int_val;
+     } else if (operand->type == IDENTIFIER) {
+        int address = get_table_entry(labels, operand->value.str_val);
+         if (address == -1){ // Token is a variable
+         // Set ROM address 
+         rom_address = get_table_entry(variables, operand->value.str_val);
+         if (rom_address == -1){
+          new_address = 16 + variables->table_length; 
+          add_to_table(variables,operand->value.str_val, new_address);
+         }
+         value_to_load = variables->table_array[rom_address]->address;
+        
+         } else if (address >= 0){// Token is a label
+         value_to_load = labels->table_array[address]->address;
+         } 
+         
+     // INSERT CODE: If the token is a keyword, set value_to_load to the correct integer literal.
+     // integer literal
+     } else if (operand->type == KEYWORD){    
+      switch (operand->value.key_val) {
+        case R0:  value_to_load = 0;  break;
+        case R1:  value_to_load = 1;  break;
+        case R2:  value_to_load = 2;  break;
+        // ... continue for R3-R15
+        case SP:  value_to_load = 0;  break;
+        case LCL: value_to_load = 1;  break;
+        case ARG: value_to_load = 2;  break;
+        case THIS: value_to_load = 3; break;
+        case THAT: value_to_load = 4; break;
+        case SCREEN: value_to_load = 16384; break;
+        case KBD: value_to_load = 24576; break;
+        default: exit(EXIT_FAILURE);
     }
-    // Writes the address to dest, padding with zeroes.
-    int_to_bin_string(value_to_load, dest);
 }
+// Writes the address to dest, padding with zeroes.
+int_to_bin_string(value_to_load, dest);
+}
+
+
 
 // Parse the operand of the given C instruction and put the corresponding Hack command into dest_str.
 void parse_c_instruction(Token *instruction[], int length, char *dest_str) {
